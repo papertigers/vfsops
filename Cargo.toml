@@ -1,0 +1,7 @@
+[package]
+name = "vfsops"
+version = "0.1.0"
+authors = ["Mike Zeller <mike@mikezeller.net>"]
+
+[dependencies]
+kstat = { path = "../kstat" }
