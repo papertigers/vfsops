@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Report VFS op outliers by bucket group"
 authors = ["Mike Zeller <mike@mikezeller.net>"]
 repository = "https://github.com/papertigers/vfsops"
-keywords = ["illumos", "kstat", "smartos", "performance", "VFS", "solaris"]
+keywords = ["illumos", "kstat", "smartos", "performance", "VFS"]
 license = "MIT"
 
 [dependencies]
