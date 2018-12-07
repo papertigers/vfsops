@@ -4,4 +4,9 @@ version = "0.1.0"
 authors = ["Mike Zeller <mike@mikezeller.net>"]
 
 [dependencies]
-kstat = { path = "../kstat" }
+kstat = "0.1"
+clap = "2.32"
+
+[[bin]]
+path = "src/main.rs"
+name = "vfsops"
