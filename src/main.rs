@@ -74,9 +74,9 @@ fn print_stats(curr: &ZoneHash, old: &Option<ZoneHash>, zone: &Option<String>, a
 
     for key in keys {
         let stat = &curr[key];
-        let zonename = &read_string(stat.data.get("zonename").unwrap());
+        let zonename = read_string(stat.data.get("zonename").unwrap());
         if zone.is_some() {
-            if zone.as_ref().unwrap() != *zonename {
+            if zone.as_ref().unwrap() != zonename {
                 continue;
             }
         }
@@ -194,7 +194,7 @@ vfsops will only output zones that have a non zero value for all buckets.
             print_header(hide_header);
             header_interval = 0;
         }
-        print_stats(&curr, &old, &zone_filter, & show_all_zones);
+        print_stats(&curr, &old, &zone_filter, &show_all_zones);
         let _ = ::std::io::stderr().flush();
 
         // move curr -> old
