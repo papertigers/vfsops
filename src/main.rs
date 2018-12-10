@@ -29,6 +29,7 @@ fn print_header(hide: bool) {
 type VfsData = Vec<KstatData>;
 type ZoneHash = HashMap<i32, KstatData>;
 
+// Stats from the KstatData that we care about
 struct Stats {
     ten_ms: u64,
     one_hundred_ms: u64,
@@ -36,11 +37,12 @@ struct Stats {
     ten_second: u64,
 }
 
-/// Consume VfsData and return it back as 'instance_id: KstatData'
+// Consume VfsData and return it back as 'instance_id: KstatData'
 fn zone_hashmap(data: VfsData) -> ZoneHash {
     data.into_iter().map(|i| (i.instance, i)).collect()
 }
 
+// Read a String kstat or error
 fn read_string(data: &KstatNamedData) -> &String {
     match data {
         KstatNamedData::DataString(val) => val,
@@ -48,6 +50,7 @@ fn read_string(data: &KstatNamedData) -> &String {
     }
 }
 
+// Read a u64 kstat or error
 fn read_u64(data: &KstatNamedData) -> u64 {
     match data {
         KstatNamedData::DataUInt64(val) => *val,
@@ -56,10 +59,10 @@ fn read_u64(data: &KstatNamedData) -> u64 {
 }
 
 fn get_stats(data: &HashMap<String, KstatNamedData>) -> Stats {
-    let ten_ms = read_u64(data.get("10ms_ops").unwrap());
-    let one_hundred_ms = read_u64(data.get("100ms_ops").unwrap());
-    let one_second = read_u64(data.get("1s_ops").unwrap());
-    let ten_second = read_u64(data.get("10s_ops").unwrap());
+    let ten_ms = read_u64(&data["10ms_ops"]);
+    let one_hundred_ms = read_u64(&data["100ms_ops"]);
+    let one_second = read_u64(&data["1s_ops"]);
+    let ten_second = read_u64(&data["10s_ops"]);
     Stats {
         ten_ms,
         one_hundred_ms,
@@ -68,20 +71,18 @@ fn get_stats(data: &HashMap<String, KstatNamedData>) -> Stats {
     }
 }
 
-fn print_stats(curr: &ZoneHash, old: &Option<ZoneHash>, zone: &Option<String>, all: &bool) {
+fn print_stats(curr: &ZoneHash, old: &Option<ZoneHash>, zone: &Option<String>, all: bool) {
     let mut keys: Vec<_> = curr.keys().collect();
-    keys.sort_by_key(|k| k.abs()); // Is there a better way to just sort without abs
+    keys.sort(); /* kstat's are returned in inconsistent orders */
 
     for key in keys {
         let stat = &curr[key];
-        let zonename = read_string(stat.data.get("zonename").unwrap());
-        if zone.is_some() {
-            if zone.as_ref().unwrap() != zonename {
-                continue;
-            }
+        let zonename = read_string(&stat.data["zonename"]);
+        if zone.is_some() && zone.as_ref().unwrap() != zonename {
+            continue;
         }
         let len = if zonename.len() >= 8 { 8 } else { zonename.len() };
-        let zonename = &read_string(stat.data.get("zonename").unwrap())[0..len];
+        let zonename = &read_string(&stat.data["zonename"])[0..len];
 
         let stats = get_stats(&stat.data);
         if old.is_none() {
@@ -89,9 +90,8 @@ fn print_stats(curr: &ZoneHash, old: &Option<ZoneHash>, zone: &Option<String>, a
                 stats.one_second, stats.ten_second);
             continue;
         }
-        // We know its Some
         let old = old.as_ref().unwrap();
-        let instance = &stat.instance;
+        let instance = &stat.instance; /* aka zoneid */
 
         // If a zone appeared during the middle of our run skip it
         if !old.contains_key(instance) { continue; };
@@ -102,10 +102,8 @@ fn print_stats(curr: &ZoneHash, old: &Option<ZoneHash>, zone: &Option<String>, a
         let one_second = stats.one_second - old_stats.one_second;
         let ten_second = stats.ten_second - old_stats.ten_second;
 
-        if !all {
-            if ten_ms == 0 && one_hundred_ms == 0 && one_second == 0 && ten_second == 0 {
-                continue;
-            }
+        if !all && ten_ms == 0 && one_hundred_ms == 0 && one_second == 0 && ten_second == 0 {
+            continue;
         }
 
         write_output!(zonename, ten_ms, one_hundred_ms, one_second, ten_second);
@@ -182,10 +180,8 @@ vfsops will only output zones that have a non zero value for all buckets.
     print_header(hide_header);
     loop {
         // there must be a better way to do this?
-        if count.is_some() {
-            if nloops >= *count.as_ref().unwrap() {
-                break;
-            }
+        if count.is_some() && nloops >= *count.as_ref().unwrap() {
+            break;
         }
         let stats = reader.read().expect("failed to read kstats");
         let curr = zone_hashmap(stats);
@@ -194,7 +190,7 @@ vfsops will only output zones that have a non zero value for all buckets.
             print_header(hide_header);
             header_interval = 0;
         }
-        print_stats(&curr, &old, &zone_filter, &show_all_zones);
+        print_stats(&curr, &old, &zone_filter, show_all_zones);
         let _ = ::std::io::stderr().flush();
 
         // move curr -> old
